@@ -10,13 +10,12 @@ export default function Dashboard() {
 
   // ===== 1. STATES =====
 
-  // Transactions MongoDB se load honge
   const [transactions, setTransactions] = useState([]);
 
-  // Form input states
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState("Expense");
+  const [category, setCategory] = useState("Food");
 
   // ===== 2. FETCH TRANSACTIONS FROM BACKEND =====
 
@@ -57,29 +56,60 @@ export default function Dashboard() {
 
   // ===== 4. ADD TRANSACTION =====
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
 
-    if (!description.trim() || !amount || Number(amount) <= 0) {
+    if (
+      !description.trim() ||
+      !amount ||
+      Number(amount) <= 0
+    ) {
+      alert("Please enter a valid description and amount.");
       return;
     }
 
     const newTransaction = {
-      _id: Date.now().toString(),
-      date: new Date().toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      }),
-      description,
-      category: description,
-      type,
+      description: description.trim(),
       amount: Number(amount),
+      category: category,
+      type,
     };
 
-    setTransactions([newTransaction, ...transactions]);
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/transactions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newTransaction),
+        }
+      );
 
-    setDescription("");
-    setAmount("");
+      const result = await response.json();
+
+
+      if (!response.ok) {
+        throw new Error(
+          result.error || result.message || "Transaction could not be saved"
+        );
+      }
+
+      setTransactions((prev) => [
+        result.data,
+        ...prev
+      ]);
+
+      setDescription("");
+      setAmount("");
+      setCategory("Food");
+
+      alert("Transaction saved successfully!");
+
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+      alert("Transaction save nahi hua. Please try again.");
+    }
   };
 
   // ===== 5. UI =====
@@ -122,12 +152,33 @@ export default function Dashboard() {
 
       <div className="bg-white rounded-xl p-5 shadow-sm mb-6 flex flex-wrap gap-3 items-center">
 
+        {/* Description */}
+
         <input
           className="border rounded-lg px-3 py-2 text-sm"
-          placeholder="Description (e.g. Food)"
+          placeholder="Description (e.g. Food shopping)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        {/* Category Dropdown */}
+
+        <select
+          className="border rounded-lg px-3 py-2 text-sm"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="Food">Food</option>
+          <option value="Shopping">Shopping</option>
+          <option value="Travel">Travel</option>
+          <option value="Bills">Bills</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Health">Health</option>
+          <option value="Education">Education</option>
+          <option value="Other">Other</option>
+        </select>
+
+        {/* Amount */}
 
         <input
           className="border rounded-lg px-3 py-2 text-sm w-32"
@@ -137,14 +188,18 @@ export default function Dashboard() {
           onChange={(e) => setAmount(e.target.value)}
         />
 
+        {/* Transaction Type */}
+
         <select
           className="border rounded-lg px-3 py-2 text-sm"
           value={type}
           onChange={(e) => setType(e.target.value)}
         >
-          <option>Income</option>
-          <option>Expense</option>
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
         </select>
+
+        {/* Add Button */}
 
         <button
           onClick={handleAdd}
@@ -159,15 +214,21 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 gap-4 mb-6">
 
-        <IncomeExpenseChart transactions={transactions} />
+        <IncomeExpenseChart
+          transactions={transactions}
+        />
 
-        <ExpenseCategoryChart transactions={transactions} />
+        <ExpenseCategoryChart
+          transactions={transactions}
+        />
 
       </div>
 
       {/* Transaction Table */}
 
-      <TransactionList transactions={transactions} />
+      <TransactionList
+        transactions={transactions}
+      />
 
     </div>
   );
